@@ -109,6 +109,7 @@ int mlc_dump(u32 mlc_end, int y_offset)
 
     int result = -1;
     int retry = 0;
+    int error_count = 0;
     int mlc_result = 0;
     int callback_result = 0;
     int write_result = 0;
@@ -133,7 +134,7 @@ int mlc_dump(u32 mlc_end, int y_offset)
         if(print_counter == 0)
         {
             print_counter = 4;
-            _printf(20, y_offset, "mlc         = %08X / %08X, mlc res %08X, retry %d", offset, mlc_end, mlc_result, retry);
+            _printf(20, y_offset, "mlc         = %08X / %08X, mlc res %08X, retry %d, errors %d", offset, mlc_end, mlc_result, retry, error_count);
         }
         else
         {
@@ -158,6 +159,13 @@ int mlc_dump(u32 mlc_end, int y_offset)
         }
         else
         {
+            if(mlc_result){
+                if(!error_count){
+                    _printf(20, y_offset+80, "WARNING: The MLC (eMMC) has errors and is likely failing. Install ISFShax ASAP gbatemp.net/threads/642258");
+                    _printf(20, y_offset+90, "To fix it use redNAND gbatemp.net/threads/642268 or MLC2SD gbatemp.net/threads/651917");
+                }
+                error_count++;
+            }
             write_result = fl_fwrite(io_buffer, 1, IO_BUFFER_SIZE, file);
             if (write_result != IO_BUFFER_SIZE) {
                 _printf(20, y_offset + 10, "mlc: Failed to write %d bytes to file %s (result: %d)!", IO_BUFFER_SIZE, file, filename, write_result);
@@ -181,7 +189,7 @@ error:
     // last print to show "done"
     _printf(20, y_offset, "mlc         = %08X / %08X, mlc res %08X, retry %d", offset, mlc_end, mlc_result, retry);
 
-    return result;
+    return result?result:error_count;
 }
 
 int check_nand_type(void)
@@ -326,10 +334,10 @@ void dump_nand_complete()
 
 error:
     offset_y += 20;
-    _printf(20, offset_y, "Error! -> rebooting...");
+    _printf(20, offset_y, "Error! Hold power on the main console to turn off");
 
-    FS_SLEEP(3000);
-    svcShutdown(SHUTDOWN_TYPE_REBOOT);
+    while(1)
+        FS_SLEEP(INT32_MAX);
 }
 
 #if 0
